@@ -11,8 +11,8 @@ define('MIX_WPML_PLUGIN_PATH', dirname(__FILE__));
 
 require_once 'IP2Location-PHP-Module-master/IP2Location.php';
 
-add_action('init', 'geoRedirect');
-function geoRedirect(){
+add_action('init', 'MIXWPMLgeoRedirect');
+function MIXWPMLgeoRedirect(){
 	session_start();
 	if($_SESSION['mccvis']){
 		return;

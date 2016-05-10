@@ -25,6 +25,9 @@ function MIXWPMLgeoRedirect(){
 	$records = MIXGetCountryByUserIp();
 	if($records['countryCode']){
 		$userCountry = getLangCodeByCountry($records['countryCode']);
+		if(!$userCountry){
+			return;
+		}
 		if($current_language == $userCountry){
 			return;
 		}
@@ -49,9 +52,11 @@ function getLangCodeByCountry($countryCode){
 		$country = end($s);
 		if($country == $countryCode){
 			$lang = $s[0];
+			return $lang;
 		}
 
 	}
+	return false;
 }
 
 function MIXGetCountryByUserIp(){

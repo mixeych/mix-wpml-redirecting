@@ -13,7 +13,10 @@ require_once 'IP2Location-PHP-Module-master/IP2Location.php';
 
 add_action('init', 'MIXWPMLgeoRedirect');
 function MIXWPMLgeoRedirect(){
-	session_start();
+	$sessStatus = session_status();
+	if($sessStatus !== 'PHP_SESSION_ACTIVE'&& $sessStatus !== 2){
+		session_start();
+	}
 	if($_SESSION['mccvis']){
 		return;
 	}

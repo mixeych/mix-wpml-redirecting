@@ -4,7 +4,6 @@ Plugin Name: MIX WPML Redirecting
 Version: 1.0
 Description: Add-on to WPML plugin. Plugin redirects user to available site language according to user ip.
 Author: Dmitriy Mikheev
-Author URI: http://itb-inc.net
 */
 
 define('MIX_WPML_PLUGIN_PATH', dirname(__FILE__));
@@ -43,14 +42,14 @@ function geoRedirect(){
 
 	$records = MIXGetCountryByUserIp();
 
-	if($records['countryCode']){
+	if($records){
 
 		//remove after
-		if($records['countryCode'] == 'IL'){
+		if($records == 'IL'){
 			return;
 		}
 		/**/
-		$userCountry = getLangCodeByCountry($records['countryCode']);
+		$userCountry = getLangCodeByCountry($records);
 		if(!$userCountry){
 			return;
 		}
@@ -66,18 +65,23 @@ function geoRedirect(){
 				die();
 			}
 		}
+	}else{
+		return;
 	}
 }
 
 function getLangCodeByCountry($countryCode){
 	$path = MIX_WPML_PLUGIN_PATH.'/locale/locale.txt';
 	$file = file_get_contents($path);
-	$arr = explode("\n", $file);
+	$arr = explode("\r\n", $file);
+	$count = count($arr);
+	if($count === 1){
+		$arr = explode("\n", $file);
+	}
+	$countryCode = trim($countryCode);
 	foreach ($arr as $loc){
 		$s = explode('-', $loc);
-
 		$country = end($s);
-
 		if($country == $countryCode){
 			$lang = $s[0];
 			return $lang;
@@ -90,7 +94,11 @@ function getLangCodeByCountry($countryCode){
 function getCountryByLangCode($lang){
 	$path = MIX_WPML_PLUGIN_PATH.'/locale/locale.txt';
 	$file = file_get_contents($path);
-	$arr = explode("\n", $file);
+	$arr = explode("\r\n", $file);
+	$count = count($arr);
+	if($count === 1){
+		$arr = explode("\n", $file);
+	}
 	$output = array();
 	foreach ($arr as $loc){
 		$s = explode('-', $loc);
@@ -111,19 +119,43 @@ function getCountryByLangCode($lang){
 }
 
 function MIXGetCountryByUserIp(){
-	$query = unserialize(file_get_contents('http://ip-api.com/php/'.$_SERVER['REMOTE_ADDR']));
-	return $query;
+	$ch = curl_init();
+	curl_setopt( $ch, CURLOPT_URL, 'http://ip-api.com/php/'.getUserHostAddress() );
+	curl_setopt( $ch, CURLOPT_RETURNTRANSFER , true );
+	$result = curl_exec( $ch );
+	if(!$result){
+		return false;
+	}
+	$output = unserialize($result);
+	if(!is_array($output)){
+		return false;
+	}
+
+	return $output['countryCode'];
 }
 
 function MIXGetCountryByIp($ip){
-	$query = unserialize(file_get_contents('http://ip-api.com/php/'.$ip));
-	return $query;
+	$ch = curl_init();
+	curl_setopt( $ch, CURLOPT_URL, 'http://ip-api.com/php/'.$ip );
+	curl_setopt( $ch, CURLOPT_RETURNTRANSFER , true );
+	$result = curl_exec( $ch );
+	if(!$result){
+		return false;
+	}
+	$output = unserialize($result);
+	if(!is_array($output)){
+		return false;
+	}
+
+	return $output['countryCode'];
 }
 
 function forbidenCountry($countryCode){
 	$userCountry = MIXGetCountryByUserIp();
-	
-	if($countryCode !== $userCountry['countryCode']){
+	if(!$userCountry){
+		return;
+	}
+	if($countryCode !== $userCountry){
 		return;
 	}
 	global $sitepress;
@@ -135,6 +167,26 @@ function forbidenCountry($countryCode){
 	wp_redirect($redirect);
 	die();
 
+}
+
+function getUserHostAddress(){
+    if (!empty($_SERVER['HTTP_X_REAL_IP']))   //check ip from share internet
+    {
+        $ip=$_SERVER['HTTP_X_REAL_IP'];
+    }
+    elseif (!empty($_SERVER['HTTP_CLIENT_IP']))   //check ip from share internet
+    {
+        $ip=$_SERVER['HTTP_CLIENT_IP'];
+    }
+    elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR']))   //to check ip is pass from proxy
+    {
+        $ip=$_SERVER['HTTP_X_FORWARDED_FOR'];
+    }
+    else
+    {
+        $ip=$_SERVER['REMOTE_ADDR'];
+    }
+    return $ip;
 }
 
 ?>

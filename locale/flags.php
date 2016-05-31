@@ -15,4 +15,5 @@ return array(
 	'CO' => 'co.png',
 	'AU' => 'au.png',
 	'US' => 'us.png',
+	'AR' => 'ar.alt.png'
 );

@@ -7,6 +7,7 @@ Author: Dmitriy Mikheev
 */
 
 define('MIX_WPML_PLUGIN_PATH', dirname(__FILE__));
+require_once MIX_WPML_PLUGIN_PATH.'/IP2Location-PHP-Module-master/IP2Location.php';
 
 global $mixWpmlCountryFlags;
 $mixWpmlCountryFlags = require_once( MIX_WPML_PLUGIN_PATH.'/locale/flags.php');
@@ -119,35 +120,52 @@ function getCountryByLangCode($lang){
 }
 
 function MIXGetCountryByUserIp(){
+	$sessStatus = session_status();
+	if($sessStatus !== 'PHP_SESSION_ACTIVE'&& $sessStatus !== 2){
+		session_start();
+	}
+	if(isset($_SESSION['MIXuserCountry'])){
+		return $_SESSION['MIXuserCountry'];
+	}
+
 	$ch = curl_init();
-	curl_setopt( $ch, CURLOPT_URL, 'http://ip-api.com/php/'.getUserHostAddress() );
+	$userIp = getUserHostAddress();
+	curl_setopt( $ch, CURLOPT_URL, 'http://ipinfo.io/'.$userIp.'/json' );
 	curl_setopt( $ch, CURLOPT_RETURNTRANSFER , true );
 	$result = curl_exec( $ch );
 	if(!$result){
-		return false;
+		$country = IP2LocGetCountryByIp($userIp);
+		$_SESSION['MIXuserCountry'] = $country;
+		return $country;
 	}
-	$output = unserialize($result);
-	if(!is_array($output)){
-		return false;
+	$output = json_decode($result);
+	if(!is_object($output)){
+		$country = IP2LocGetCountryByIp($userIp);
+		$_SESSION['MIXuserCountry'] = $country;
+		return $country;
 	}
-
-	return $output['countryCode'];
+	curl_close($ch);
+	$_SESSION['MIXuserCountry'] = $output->country;
+	return $output->country;
 }
 
 function MIXGetCountryByIp($ip){
+
 	$ch = curl_init();
-	curl_setopt( $ch, CURLOPT_URL, 'http://ip-api.com/php/'.$ip );
+	curl_setopt( $ch, CURLOPT_URL, 'http://ipinfo.io/'.$ip.'/json' );
 	curl_setopt( $ch, CURLOPT_RETURNTRANSFER , true );
 	$result = curl_exec( $ch );
 	if(!$result){
-		return false;
+		$country = IP2LocGetCountryByIp($ip);
+		return $country;
 	}
-	$output = unserialize($result);
-	if(!is_array($output)){
-		return false;
+	$output = json_decode($result);
+	if(!is_object($output)){
+		$country = IP2LocGetCountryByIp($ip);
+		return $country;
 	}
-
-	return $output['countryCode'];
+	curl_close($ch);
+	return $output->country;
 }
 
 function forbidenCountry($countryCode){
@@ -187,6 +205,16 @@ function getUserHostAddress(){
         $ip=$_SERVER['REMOTE_ADDR'];
     }
     return $ip;
+}
+
+function IP2LocGetCountryByIp($ip){
+	$db = new \IP2Location\Database(MIX_WPML_PLUGIN_PATH.'/IP2Location-PHP-Module-master/databases/IP2LOCATION-LITE-DB1.BIN', \IP2Location\Database::FILE_IO);
+
+	$records = $db->lookup($ip, \IP2Location\Database::ALL);
+	if(!is_array($records)||!isset($records['countryCode'])){
+		return false;
+	}
+	return $records['countryCode'];
 }
 
 ?>
